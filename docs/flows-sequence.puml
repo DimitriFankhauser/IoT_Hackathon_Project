@@ -1,0 +1,20 @@
+@startuml
+actor NodeRED as NR
+actor NPL_Engine as NPL
+actor "RabbitMQ" as MQ <<Queue>>
+actor BlockchainConnector as BC
+actor Blockchain as BL
+
+== Market Price Flow (every 5 min) ==
+NR -> NPL: POST /npl/iot_steering/MarketPrice/{{id}}/submitNewPrice { price }
+
+== Consumption Flow (every 5 min) ==
+NR -> NPL: GET /npl/iot_steering/Device/
+NPL --> NR: [device list]
+loop for each device
+    NR -> NPL: POST /npl/iot_steering/Device/{{id}}/submitConsumptionRequest { usage }
+    NPL -> MQ: publish usage event
+    MQ -> BC: deliver usage event
+    BC -> BL: recordUsageAndCharge(deviceId, usage)
+end
+@enduml

@@ -1,0 +1,127 @@
+package connector.v1.blockchain
+
+union ArgData {
+    Text,
+    Boolean,
+
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Int128,
+    Int256,
+
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Uint128,
+    Uint256,
+
+    Address,
+    TokenBalance /* EVM: uint256, Stellar: i128 */,
+    TokenDecimal /* EVM: uint8, Stellar: u32 */,
+    Bytes32,
+    List<ArgData>
+};
+
+struct Int8 {
+    value: Number
+};
+
+struct Int16 {
+    value: Number
+};
+
+struct Int32 {
+    value: Number
+};
+
+struct Int64 {
+    value: Number
+};
+
+struct Int128 {
+    value: Number
+};
+
+struct Int256 {
+    value: Number
+};
+
+struct Uint8 {
+    value: Number
+};
+
+struct Uint16 {
+    value: Number
+};
+
+struct Uint32 {
+    value: Number
+};
+
+struct Uint64 {
+    value: Number
+};
+
+struct Uint128 {
+    value: Number
+};
+
+struct Uint256 {
+    value: Number
+};
+
+struct Address {
+    value: Text
+};
+
+struct TokenBalance {
+    value: Text
+};
+
+struct TokenDecimal {
+    value: Number
+};
+
+struct Bytes32 {
+    value: Text
+}
+
+struct BlockchainFunction {
+    functionName: Text,
+    contractAddress: Text,
+    senderAddress: Text,
+    blockchainType: BlockchainType,
+    args: Map<Text, ArgData>
+};
+
+struct BlockchainFunctionResponse {
+    status: BlockchainStatus,
+    hash: Optional<Text>,
+    errorCode: Optional<Text>,
+    details: Optional<Text>
+}
+
+notification BlockchainFunctionMessage(
+    call: BlockchainFunction
+) returns BlockchainFunctionResponse;
+
+struct BlockchainDeploy {
+    senderAddress: Text,
+    compiledContractPath: Text,
+    blockchainType: BlockchainType,
+    args: Map<Text, ArgData>
+};
+
+struct BlockchainDeployResponse {
+    status: BlockchainStatus,
+    contractAddress: Optional<Text>,
+    errorCode: Optional<Text>,
+    details: Optional<Text>
+};
+
+notification BlockchainDeployMessage(
+    deployment: BlockchainDeploy
+) returns BlockchainDeployResponse;

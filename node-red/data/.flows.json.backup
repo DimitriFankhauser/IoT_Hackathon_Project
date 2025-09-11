@@ -1,0 +1,252 @@
+[
+    {
+        "id": "random-number-flow-2",
+        "type": "tab",
+        "label": "IoT Data",
+        "disabled": false,
+        "info": "Second instance - Sends random number to HTTP endpoint every 5 minutes",
+        "env": []
+    },
+    {
+        "id": "random-timer-inject-2",
+        "type": "inject",
+        "z": "random-number-flow-2",
+        "name": "Every 5 minutes",
+        "props": [],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "x": 90,
+        "y": 160,
+        "wires": [
+            [
+                "random-token-request-body-2"
+            ]
+        ]
+    },
+    {
+        "id": "random-token-request-body-2",
+        "type": "change",
+        "z": "random-number-flow-2",
+        "name": "Set token request body",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "grant_type=client_credentials&client_id=nodered&client_secret=NplStarter2025!",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "headers",
+                "pt": "msg",
+                "to": "{\"Content-Type\":\"application/x-www-form-urlencoded\"}",
+                "tot": "json"
+            }
+        ],
+        "x": 370,
+        "y": 160,
+        "wires": [
+            [
+                "random-keycloak-token-request-2"
+            ]
+        ]
+    },
+    {
+        "id": "random-keycloak-token-request-2",
+        "type": "http request",
+        "z": "random-number-flow-2",
+        "name": "Get Keycloak Token",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://keycloak:11000/realms/starter/protocol/openid-connect/token",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 660,
+        "y": 160,
+        "wires": [
+            [
+                "random-extract-token-2"
+            ]
+        ]
+    },
+    {
+        "id": "random-extract-token-2",
+        "type": "function",
+        "z": "random-number-flow-2",
+        "name": "Extract Token",
+        "func": "// Extract and store the access token\nconst accessToken = msg.payload.access_token;\n\n// Generate random number between 1 and 100\nconst randomNumber = Math.floor(Math.random() * 100) + 1;\n\nvar coeff = 1000 * 60 * 5;\nvar date = new Date();  //or use any other date\nvar rounded = new Date(Math.round(date.getTime() / coeff) * coeff)\n\n// Set headers with authorization and content type\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + accessToken,\n    \"Content-Type\": \"application/json\"\n};\n\nmsg.access_token = accessToken;\n\nnode.log(`Flow 2 - Using access token: ${accessToken}`)\nnode.log(`Flow 2 - Generated random number: ${randomNumber}`);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 160,
+        "wires": [
+            [
+                "http-request-random-2"
+            ]
+        ]
+    },
+    {
+        "id": "http-request-random-2",
+        "type": "http request",
+        "z": "random-number-flow-2",
+        "name": "List Device protocols",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://engine:12000/npl/iot_steering/Device/",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 100,
+        "y": 360,
+        "wires": [
+            [
+                "24901dccc68f47a2"
+            ]
+        ]
+    },
+    {
+        "id": "resolve-id-2",
+        "type": "function",
+        "z": "random-number-flow-2",
+        "name": "Resolve ID & Create payload",
+        "func": "const accessToken = msg.access_token;\n\nnode.log(`Devices: ${JSON.stringify(msg.payload)}`);\n\nconst id = msg.payload[\"@id\"];\nnode.log(`Flow 2 - ID: ${id}`);\n\n// Create payload with random number and timestamp\nmsg.payload = {\n    // ...\n};\n\n// Set headers with authorization and content type\nmsg.headers = {\n    \"Authorization\": \"Bearer \" + accessToken,\n    \"Content-Type\": \"application/json\"\n};\n\nnode.log(`Flow 2 - Using access token: ${accessToken}`)\nnode.log(`Flow 2 - Payload: ${JSON.stringify(msg.payload)}`)\n\nmsg.id = id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 160,
+        "y": 620,
+        "wires": [
+            [
+                "7a1735c0371cf43b"
+            ]
+        ]
+    },
+    {
+        "id": "add-market-price-2",
+        "type": "http request",
+        "z": "random-number-flow-2",
+        "name": "Add Device Measuring Data",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://engine:12000/npl/iot_steering/Device/{{{id}}}/submitEvent",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 740,
+        "y": 700,
+        "wires": [
+            [
+                "debug-random-response-2"
+            ]
+        ]
+    },
+    {
+        "id": "debug-random-response-2",
+        "type": "debug",
+        "z": "random-number-flow-2",
+        "name": "Random Number Response 2",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "7028326f4545cfc3",
+        "type": "split",
+        "z": "random-number-flow-2",
+        "name": "Split devices",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 690,
+        "y": 460,
+        "wires": [
+            [
+                "resolve-id-2"
+            ]
+        ]
+    },
+    {
+        "id": "24901dccc68f47a2",
+        "type": "function",
+        "z": "random-number-flow-2",
+        "name": "Resolve Devices",
+        "func": "const devices = JSON.parse(msg.payload).items;\n\n// Set the devices array directly on payload for splitting\nmsg.payload = devices;\n\nnode.log(`Found ${devices.length} devices to process`);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 420,
+        "wires": [
+            [
+                "7028326f4545cfc3"
+            ]
+        ]
+    },
+    {
+        "id": "7a1735c0371cf43b",
+        "type": "delay",
+        "z": "random-number-flow-2",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "2",
+        "rateUnits": "second",
+        "randomFirst": "20",
+        "randomLast": "30",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 440,
+        "y": 660,
+        "wires": [
+            [
+                "add-market-price-2"
+            ]
+        ]
+    }
+]

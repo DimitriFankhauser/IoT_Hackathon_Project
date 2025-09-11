@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>npl</artifactId>
+
+    <parent>
+        <groupId>com.noumenadigital.starter</groupId>
+        <artifactId>parent-pom</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../parent-pom</relativePath>
+    </parent>
+
+    <version>1.0.0</version>
+
+    <properties>
+        <npl.contrib.dir>${project.build.directory}/contrib</npl.contrib.dir>
+        <npl.connector.version>1.0.20</npl.connector.version>
+        <da.lib.version>1.0.0</da.lib.version>
+        <openapi-npl-codegen.version>1.0.9</openapi-npl-codegen.version>
+        <noumena.platform.version>2025.1.9</noumena.platform.version>
+    </properties>
+
+    <build>
+        <sourceDirectory>src/main/npl</sourceDirectory>
+        <testSourceDirectory>src/test/npl</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <descriptors>
+                                <descriptor>assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.noumenadigital.platform</groupId>
+                <artifactId>npl-maven-plugin</artifactId>
+                <version>${noumena.platform.version}</version>
+                <executions>
+                    <execution>
+                        <id>build-project</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npl-compile</goal>
+                            <goal>npl-test-compile</goal>
+                            <goal>npl-test</goal>
+                            <goal>npl-api</goal>
+                        </goals>
+                        <configuration>
+                            <enableCompilerOptimisations>true</enableCompilerOptimisations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+                TODO(octarine): This is a hack to prevent OpenAPI code generator from failing. Due to use of unions in
+                  NPL, Typescript files generated from the below spec contain invalid code. The file isn't needed, as
+                  other services (HTTP connector) call these APIs directly without using the spec. At the same time,
+                  NPL and OpenAPI Maven plugins do not provide functionality of excluding an NPL package or a spec from
+                  being used for code generation, hence the removal. Oh well.
+
+                P.S. Both phase and plugin invocation order matter: it's important that it runs 1) in the same phase as
+                  npl-maven-plugin, and 2) before openapi-generator-maven-plugin.
+            -->
+            <!-- <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>remove-openapi-file</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>rm</executable>
+                            <arguments>
+                                <argument>${project.build.directory}/generated-sources/openapi/starter-openapi.yml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin> -->
+            <!--            <plugin>-->
+            <!--                <groupId>org.openapitools</groupId>-->
+            <!--                <artifactId>openapi-generator-maven-plugin</artifactId>-->
+            <!--                <version>7.4.0</version>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <goals>-->
+            <!--                            <goal>generate</goal>-->
+            <!--                        </goals>-->
+            <!--                        <configuration>-->
+            <!--                            <inputSpecRootDirectory>${project.basedir}/target/generated-sources/openapi/</inputSpecRootDirectory>-->
+            <!--                            <generatorName>typescript-axios</generatorName>-->
+            <!--                            <output>../services/libs/npl/src/generated-sources</output>-->
+            <!--                            <additionalProperties>useSingleRequestParameter=true</additionalProperties>-->
+            <!--                        </configuration>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.noumenadigital.platform</groupId>
+            <artifactId>clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>openapi-generator-cli</artifactId>
+            <version>7.7.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.noumenadigital.contrib</groupId>
+            <artifactId>npl-connectors-library</artifactId>
+            <version>${npl.connector.version}</version>
+            <type>zip</type>
+        </dependency>
+    </dependencies>
+</project>

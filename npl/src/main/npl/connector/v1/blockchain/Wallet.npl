@@ -1,0 +1,48 @@
+package connector.v1.blockchain
+
+use connector.v1.blockchain.BlockchainType
+use connector.v1.blockchain.BlockchainStatus
+
+enum WalletType { 
+  Ethereum,
+  Stellar
+}
+
+enum WalletStorageType { 
+  Vault,
+  AzureHSM
+}
+
+struct WalletCreate {
+  walletType: WalletType,
+  storageType: WalletStorageType,
+  faucetFund: Optional<Number>
+}
+
+notification WalletCreateMessage(
+  create: WalletCreate
+) returns WalletCreateResponse;
+
+struct WalletCreateResponse {
+    status: BlockchainStatus,
+    walletAddress: Optional<Text>,
+    errorCode: Optional<Text>,
+    details: Optional<Text>
+};
+
+struct WalletFaucetFund {
+  address: Text,
+  amount: Number,
+  blockchainType: BlockchainType
+}
+
+notification WalletFaucetFundMessage(
+  fund: WalletFaucetFund
+) returns WalletFaucetFundResponse;
+
+struct WalletFaucetFundResponse {
+    status: BlockchainStatus,
+    hash: Optional<Text>,
+    errorCode: Optional<Text>,
+    details: Optional<Text>
+};

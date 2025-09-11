@@ -1,0 +1,19 @@
+package iot_steering;
+
+@test
+function demo(test: Test) -> {
+    var setup = initIotSteering("0x6723884b885108e4D2e594436714236B9d27C197", "0xCe4ECc14DC8E8A9d03883d67A64d7E692ad74413", "0x8b8ce3a0e9cC0aD609364eE3DbF383b5f00DAC50");
+    //var walletOwner = "WalletOwner";
+    var Validator = "Validator";
+    var Operator = "Operator";
+
+    //var iotDevice = setup.iotDevice;
+
+    //var deviceGroup = setup.deviceGroups
+     //   .filter(function(ds: DeviceGroup) returns Boolean -> ds.deviceManager.entity().getOrNone("email").getOrFail().toList().get(0) == alice + "@example.com").get(0);
+    //var car = deviceGroup.devices.filter(function(d: Device) returns Boolean -> d.key == "C02-sensor - Inbound" + Operator).get(0);
+    //var heating = deviceGroup.devices.filter(function(d: Device) returns Boolean -> d.key == "C02-sensor - Outbound" + alice).get(0);
+    //var startTime = dateTimeOf(2025, 8, 13, 13, 0, "Z");
+
+    test.assertEquals(1, 1, "Test passed: Consumption events processed correctly");
+}

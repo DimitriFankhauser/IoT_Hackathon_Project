@@ -1,0 +1,18 @@
+systemUnderAudit: iot_steering
+
+changesets:
+  - name: 1.0.0
+    changes:
+      - npl-load:
+        dir-list: npl
+      - npl-run:
+        protocol: iot_steering/Setup
+        action: initialise
+        # wallets: WalletOwner, Validator, Operator # TODO: Update these with the wallets you control
+        arguments: "0x6723884b885108e4D2e594436714236B9d27C197, 0xCe4ECc14DC8E8A9d03883d67A64d7E692ad74413, 0x8b8ce3a0e9cC0aD609364eE3DbF383b5f00DAC50"
+      - npl-run:
+        protocol: iot_steering/Setup
+        action: initialise
+        run-only: "HARDHAT"
+        # wallets: WalletOwner, Validator, Operator
+        arguments: "0x6723884b885108e4D2e594436714236B9d27C197, 0xCe4ECc14DC8E8A9d03883d67A64d7E692ad74413, 0x8b8ce3a0e9cC0aD609364eE3DbF383b5f00DAC50"

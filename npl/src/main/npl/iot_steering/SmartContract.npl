@@ -1,0 +1,86 @@
+package iot_steering
+
+use connector.v1.blockchain.ArgData
+use connector.v1.blockchain.BlockchainDeploy
+use connector.v1.blockchain.BlockchainDeployMessage
+use connector.v1.blockchain.BlockchainDeployResponse
+use connector.v1.blockchain.BlockchainStatus
+use connector.v1.blockchain.BlockchainType
+use connector.v1.blockchain.Uint256
+
+@api
+protocol[worker] SmartContract(
+    var ownerWalletAddress: Text,
+    var customerWalletAddresses: Set<Text>,
+) {
+    initial state pending;
+    final state deployed;
+    final state failed;
+
+    init {
+        this.deployContract[worker]();
+        this.observers = this.observers.with("everyone", partyOf(
+            mapOf<Text, Set<Text>>(),
+            mapOf<Text, Set<Text>>(),
+        ));
+    }
+
+    // https://testnet.snowtrace.io/address/{{id}}
+    // https://testnet.snowtrace.io/address/0xAFbC7C591c486dbf21e8e66192744A44399703eC
+    var tokenContractAddress: Text = "";
+    var tokenContractDeploymentError: Optional<Text> = optionalOf<Text>();
+    var tokenContractDeploymentDate: Optional<DateTime> = optionalOf<DateTime>();
+
+    permission[worker] deployContract() {
+        info("Requesting contract deployment");
+        notify BlockchainDeployMessage(
+            BlockchainDeploy(
+                this.ownerWalletAddress,
+                "ethereum/DeviceConsumptionToken.json",
+                BlockchainType.Ethereum,
+                mapOf<Text, ArgData>(
+                    //Pair("initialSupply", Uint256(1000000000000))
+                )
+            )
+        ) resume contractDeploymentCallback;
+    };
+
+    @api
+    permission[worker] contractDeploymentCallback(
+        res: NotifyResult<BlockchainDeployResponse>
+    ) | pending {
+        match(res) {
+            is NotifySuccess<BlockchainDeployResponse> -> {
+                match(res.result.status) {
+                    BlockchainStatus.Success -> this.contactDeploymentSuccess[worker](
+                        res.result.contractAddress.getOrFail()
+                    )
+                    BlockchainStatus.Failure -> this.contactDeploymentFailure[worker](res.result.details.getOrFail())
+                };
+            }
+            // This should never be called -- the call's result, with error, is passed via NotifySuccess.
+            is NotifyFailure -> { error("Token contract deployment finished with notify failure"); }
+        };
+    };
+
+    permission[worker] contactDeploymentSuccess(tokenContractAddress: Text) | pending {
+        info("Contract deployment finished with address: " + tokenContractAddress);
+        this.tokenContractAddress = tokenContractAddress;
+        this.tokenContractDeploymentDate = optionalOf(now());
+        become deployed;
+    };
+
+    permission[worker] contactDeploymentFailure(error: Text) | pending {
+        info("Contract deployment finished with error: " + error);
+        this.tokenContractDeploymentError = optionalOf(error);
+
+        this.deployContract[worker]();
+
+        become failed;
+    };
+};
+
+function getBlockchainConnectorParty() returns Party -> partyOf(
+    entityClaims = mapOf(Pair("role", setOf("blockchain_connector"))),
+    accessClaims = mapOf<Text, Set<Text>>()
+)

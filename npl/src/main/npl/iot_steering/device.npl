@@ -1,0 +1,73 @@
+package iot_steering;
+
+use connector.v1.blockchain.ArgData
+use connector.v1.blockchain.Address
+use connector.v1.blockchain.Uint256
+use connector.v1.blockchain.BlockchainFunction
+use connector.v1.blockchain.BlockchainFunctionMessage
+use connector.v1.blockchain.BlockchainFunctionResponse
+use connector.v1.blockchain.BlockchainStatus
+use connector.v1.blockchain.BlockchainType
+
+// https://testnet.snowtrace.io/tx/{{hash}}
+// https://testnet.snowtrace.io/tx/0x3ed85c418dc068e93a37975c3ce6767c8dfd1ef5d5414518a8d1d25f60c63645
+
+@api
+protocol[WalletOwner, Operator, Validator] Device(
+    var key: Text,
+    var smartContract: SmartContract,
+    var customerWalletAddress: Text,
+) {
+
+    // var myLongDataList: List<MyLongDataType> = ...;
+    
+    @api
+    permission[Operator]SaveDate(Value: Number) {
+
+
+    };
+
+    @api
+        permission[Operator]mint(Value: Number) {
+            notify BlockchainFunctionMessage(BlockchainFunction(
+        functionName = "mint",
+        contractAddress = this.smartContract.tokenContractAddress,
+        senderAddress = this.smartContract.ownerWalletAddress,
+        blockchainType = BlockchainType.Ethereum,
+        args = mapOf<Text, ArgData>(
+                Pair("to", Address(this.customerWalletAddress)),
+                Pair("amount", Uint256(1))
+        )
+    )) resume mintingCallback;
+
+        };
+
+    @api
+        permission[Operator] mintingCallback (
+            res: NotifyResult<BlockchainFunctionResponse>
+        ) {
+            match(res) {
+                is NotifySuccess<BlockchainFunctionResponse> -> match(res.result.status) {
+                    BlockchainStatus.Success -> this.mintingSucceeded[Operator](res.result.hash.getOrFail())
+                    BlockchainStatus.Failure -> this.mintingFailed[Operator](res.result.details.getOrFail())
+                }
+                // This will never be called -- the blockchain response, including errors, is passed via NotifySuccess.
+                is NotifyFailure -> { }
+            };
+        };
+
+        permission[Operator] mintingSucceeded(
+            hash: Text
+        ){
+            info("success here");
+            // todo if you need to 
+        }
+
+        permission[Operator] mintingFailed(
+            error: Text
+        ){
+            info("error here");
+            // todo if you want to
+        }
+}
+

@@ -1,0 +1,76 @@
+package iot_steering;
+
+protocol[system] Setup() {
+    permission[system] initialise(walletOwner: Text, walletValidator: Text, walletOperator: Text) {
+        initIotSteering(walletOwner, walletValidator, walletOperator);
+    }
+}
+
+function getDeviceManager(email: Text) returns Party -> {
+    return getParty(email, "deviceManager");
+}
+
+function getIoTDevice() returns Party -> {
+    return partyOf(
+        mapOf(Pair("role", setOf("IoTDevice"))),
+        mapOf<Text, Set<Text>>()
+    );
+}
+
+function getParty(email: Text, role: Text) returns Party -> {
+    return partyOf(
+        mapOf(
+            Pair("email", setOf(email)),
+            Pair("role", setOf(role)),
+        ),
+        mapOf<Text, Set<Text>>()
+    );
+}
+
+struct SetupProtocols {
+    iotDevice: Party,
+    deviceGroups: List<DeviceGroup>,
+}
+
+struct DeviceGroup {
+    deviceManager: Party,
+    devices: List<Device>,
+}
+
+struct DeviceManager {
+    name: Text,
+    wallet: Text,
+}
+
+function initIotSteering(walletOwner: Text, walletValidator: Text, walletOperator: Text) returns SetupProtocols -> {
+
+    var deviceManagers = listOf(
+        DeviceManager("Operator", walletOperator),
+        DeviceManager("Validator", walletValidator),
+        //DeviceManager("charlie", walletcharlie)
+    );
+    var iotDevice = getIoTDevice();
+    var blockchain_worker = getBlockchainConnectorParty();
+
+    var smartContract = SmartContract[blockchain_worker](
+        ownerWalletAddress = walletOwner,
+        customerWalletAddresses = deviceManagers.map(
+            function(dm: DeviceManager) returns Text -> {
+                return dm.wallet;
+            }
+        ).toSet(),
+    );
+
+    var deviceGroups = deviceManagers.map(function(dm: DeviceManager) returns DeviceGroup -> {
+        var deviceManagerEmail = dm.name + "@example.com";
+        var deviceManager = getDeviceManager(deviceManagerEmail);
+        var c02Inbound = Device[iotDevice,deviceManager, blockchain_worker]("C02-sensor - Inbound" + dm.name, smartContract, dm.wallet);
+        var c02Outbound = Device[iotDevice, deviceManager, blockchain_worker]("C02-sensor - Outbound" + dm.name, smartContract, dm.wallet);
+        return DeviceGroup(deviceManager, listOf(c02Inbound, c02Outbound));
+    });
+
+    return SetupProtocols(
+        iotDevice = iotDevice,
+        deviceGroups = deviceGroups,
+    );
+}

@@ -1,0 +1,12 @@
+package connector.v1.blockchain
+
+enum BlockchainType {
+    Ethereum,
+    Stellar,
+    StellarAsset
+}
+
+enum BlockchainStatus {
+    Success,
+    Failure
+}

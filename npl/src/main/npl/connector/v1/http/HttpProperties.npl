@@ -1,0 +1,14 @@
+package connector.v1.http
+
+enum HttpMethod {
+    GET,
+    POST,
+    PUT,
+    PATCH,
+    DELETE
+}
+
+enum ExecutionStatus {
+    Success,
+    Failure
+}

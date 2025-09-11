@@ -1,0 +1,274 @@
+volumes:
+  engine-db: { }
+  keycloak-db: { }
+
+services:
+  nodered:
+    build: node-red
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./node-red/data:/data
+    restart: unless-stopped
+    depends_on:
+      engine:
+        condition: service_healthy
+
+  engine:
+    image: ghcr.io/noumenadigital/starter/engine:latest
+    build:
+      context: npl
+    ports:
+      - "12000:12000"
+    environment:
+      ENGINE_DEV_MODE: ${DEV_MODE:-false}
+      ENGINE_ALLOWED_ISSUERS: "http://localhost:11000/realms/starter, http://keycloak:11000/realms/starter"
+      ENGINE_ISSUER_OVERRIDE: http://keycloak:11000/realms/starter
+      ENGINE_DB_URL: "jdbc:postgresql://engine-db:5432/engine"
+      ENGINE_DB_USER: starter
+      ENGINE_DB_PASSWORD: secret
+      ENGINE_DB_HISTORY_USER: history
+      ENGINE_DB_HISTORY_SCHEMA: history
+      ENGINE_DB_READ_MODEL_USER: postgraphile
+      ENGINE_NPL_MIGRATION_RUN_ONLY: LOCAL
+      SWAGGER_ENGINE_URL: http://localhost:12000
+      SWAGGER_SECURITY_AUTH_URL: http://localhost:11000/realms/starter
+      SWAGGER_SECURITY_CLIENT_ID: starter
+      SWAGGER_SECURITY_CLIENT_SECRET: ''
+
+      AMQP_USERNAME: "${AMQP_USERNAME}"
+      AMQP_PASSWORD: "${AMQP_PASSWORD}"
+      AMQP_BROKER_URL: "amqp://${AMQP_HOST?}:${AMQP_PORT?}"
+      AMQP_QUEUE_NAME: "${SHARED_AMQP_QUEUE}"
+      AMQP_POLLING_PERIOD_SECONDS: 1
+    depends_on:
+      engine-db:
+        condition: service_healthy
+      keycloak-provisioning:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      hardhat:
+        condition: service_healthy
+
+  engine-db:
+    image: postgres:14.4-alpine
+    mem_limit: 256m
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: engine
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      ENGINE_DB_USER: starter
+      ENGINE_DB_PASSWORD: secret
+      HISTORY_DB_USER: history
+      HISTORY_DB_PASSWORD: secret
+      POSTGRAPHILE_DB_USER: postgraphile
+      POSTGRAPHILE_DB_PASSWORD: secret
+    volumes:
+      - ./db_init/db_init.sh:/docker-entrypoint-initdb.d/db_init.sh
+      - engine-db:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postgres -d engine
+      interval: 1s
+      timeout: 5s
+      retries: 50
+
+  keycloak-provisioning:
+    image: ghcr.io/noumenadigital/starter/keycloak-provisioning:latest
+    build:
+      context: keycloak-provisioning
+    environment:
+      KEYCLOAK_USER: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_PASSWORD: ${SEED_PASSWORD}
+      KEYCLOAK_URL: ${KEYCLOAK_URL}
+      TF_VAR_default_password: ${SEED_TEST_USERS_PASSWORD:-NplStarter2025!}
+      TF_VAR_default_admin_user: ${KEYCLOAK_ADMIN}
+      TF_VAR_keycloak_url: ${KEYCLOAK_URL}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  keycloak:
+    image: ghcr.io/noumenadigital/starter/keycloak:latest
+    build:
+      context: keycloak
+    command: |
+      start
+      --spi-events-listener-jboss-logging-success-level=info
+      --spi-events-listener-jboss-logging-error-level=error
+      --spi-brute-force-protector-default-brute-force-detector-allow-concurrent-requests=true
+      --hostname-strict=false
+      --health-enabled=true
+      --http-enabled=true
+      --metrics-enabled=true
+      --db=postgres
+    ports:
+      - "11000:11000"
+      - "9000:9000"
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB_URL: jdbc:postgresql://keycloak-db/postgres
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: testing
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: 11000
+      KC_HOSTNAME: keycloak
+      KEYCLOAK_ENDPOINT: "http://keycloak:11000"
+    depends_on:
+      keycloak-db:
+        condition: service_started
+    healthcheck:
+      test: curl http://keycloak:11000/health || exit 1
+      interval: 1s
+      retries: 60
+
+  keycloak-db:
+    image: postgres:14.4-alpine
+    mem_limit: 256m
+    ports:
+      - "11040:5432"
+    volumes:
+      - keycloak-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: testing
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 1s
+      timeout: 5s
+      retries: 50
+
+  blockchain-connector:
+    image: ghcr.io/noumenadigital/npl-blockchain-starter/blockchain-connector:latest
+    platform: linux/amd64
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      vault:
+        condition: service_started
+      keycloak-provisioning:
+        condition: service_completed_successfully
+      hardhat:
+        condition: service_healthy
+      engine:
+        condition: service_healthy
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      ENGINE_URL: "http://engine:12000"
+      KEYCLOAK_URL: "${KEYCLOAK_URL?}"
+      KEYCLOAK_REALM: "${KEYCLOAK_REALM?}"
+      KEYCLOAK_CLIENT_ID: "${BLOCKCHAIN_CONNECTOR_KEYCLOAK_CLIENT_ID?}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_ADMIN_PASSWORD?}"
+      KEYCLOAK_ADMIN_USER: "${KEYCLOAK_ADMIN}"
+      KEYCLOAK_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD?}"
+      KEYCLOAK_HOST: "${KEYCLOAK_HOST?}"
+      VAULT_TYPE: "hashicorp"
+      VAULT_URL: "${VAULT_ENDPOINT?}"
+      VAULT_TOKEN: "${VAULT_TOKEN?}"
+      VAULT_KEY_PATH: "${VAULT_KEY_PATH?}"
+      VAULT_KEY_NAME: "${VAULT_KEY_NAME?}"
+      AMQP_HOST: "${AMQP_HOST?}"
+      AMQP_PORT: "${AMQP_PORT?}"
+      AMQP_USERNAME: "${AMQP_USERNAME?}"
+      AMQP_PASSWORD: "${AMQP_PASSWORD?}"
+      AMQP_QUEUE_NAME: "${SHARED_AMQP_QUEUE?}"
+
+      SMART_CONTRACTS_ROOT_DIR: "/alloc/smart-contracts"
+
+      STELLAR_RPC_URL: "${STELLAR_RPC_URL?}"
+      STELLAR_NETWORK_TYPE: "${STELLAR_NETWORK_TYPE?}"
+
+      ETHEREUM_FAUCET_WALLET_PRIVATE_KEY: "N/A"
+      BLOCKCHAIN_PROVIDER_SECRET_URL: "https://api.avax-test.network/ext/bc/C/rpc"
+
+      AZURE_CLIENT_SECRET: "MISSING"
+      AZURE_TENANT_ID: "MISSING"
+      AZURE_CLIENT_ID: "MISSING"
+      AZURE_HSM_URL: "MISSING"
+      IS_PROD: "MISSING"
+    volumes:
+      - "./blockchain/avalanche/artifacts/contracts/DeviceConsumptionToken.sol/:/alloc/smart-contracts/ethereum/"
+
+
+  rabbitmq:
+    image: ghcr.io/noumenadigital/starter/rabbitmq:latest
+    build:
+      context: rabbitmq
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      AMQP_QUEUE_NAME: "${SHARED_AMQP_QUEUE?}"
+      AMQP_USERNAME: "${AMQP_USERNAME?}"
+      AMQP_PASSWORD: "${AMQP_PASSWORD?}"
+    user: rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics ping
+      interval: 3s
+      timeout: 10s
+      retries: 60
+
+  vault:
+    mem_limit: 256m
+    image: vault:1.13.3
+    privileged: true
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    environment:
+      SERVICE_8200_NAME: vault
+      SERVICE_8201_NAME: vault-ui
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_ADDR: http://localhost:8200
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # TODO: Initialize vault with the owner private key and address
+  init_vault:
+    image: curlimages/curl
+    environment:
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      OWNER_ADDRESS: 0x2826D1d4B86ADB9642246351453F309f32cE8Fad
+      OWNER_PRIVATE_KEY: f31d2015920ae390ca1d12472ac3cddd55c340dab4e69d5d4b75133f7106dd32
+    command:
+      - /bin/sh
+      - -c
+      - |
+        curl -v -H "X-Vault-Token: $VAULT_TOKEN" -H "Content-Type: application/json" -d "{\"data\": { \"privateKey\": \"$$OWNER_PRIVATE_KEY\" } }" http://vault:8200/v1/secret/data/blockchain/ethereum/$$OWNER_ADDRESS
+    depends_on:
+      vault:
+        condition: service_healthy
+
+  nginx-proxy:
+    image: nginx:latest
+    container_name: nginx-cors-proxy
+    ports:
+      - "12001:12001"
+    #      - "15001:15001"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/snippets:/etc/nginx/snippets
+    depends_on:
+      engine:
+        condition: service_healthy
+
+  hardhat:
+    image: ghcr.io/noumenadigital/npl-blockchain-starter/hardhat:latest
+    build:
+      context: blockchain/avalanche
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -tln | grep 8545 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s

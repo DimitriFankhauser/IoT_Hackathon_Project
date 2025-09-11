@@ -1,0 +1,28 @@
+package connector.v1.http
+
+union HttpData {
+    Text,
+    Number,
+    Boolean,
+    List<HttpData>,
+
+    // Map types (workaround for ST-4693).
+    Pair<Text, HttpData>,
+    List<Pair<Text, HttpData>>
+}
+
+struct HttpRequest {
+    method: HttpMethod,
+    url: Text,
+    data: HttpData
+    // Add headers.
+};
+
+struct HttpResponse {
+    executionStatus: ExecutionStatus,
+    statusCode: Number,
+    data: HttpData
+    // Add headers.
+};
+
+notification HttpRequestExecutionMessage(httpRequest: HttpRequest) returns HttpResponse;
