@@ -1,0 +1,10 @@
+package objects.datapoint
+
+@api
+protocol[owner] Datapoint( 
+    var timestamp: Number, 
+    var intake: Number, 
+    var outlet: Number,
+    var airflow: Number) {
+    
+};
