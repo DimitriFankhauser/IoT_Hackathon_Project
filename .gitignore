@@ -20,7 +20,6 @@ pom.xml.versionsBackup
 npl/npl-contrib/*
 npl-contrib.properties
 **/test_snapshots/*
-.env
 .claude
 .cursorrules
 tmp
