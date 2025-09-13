@@ -9,7 +9,7 @@ This project is heavily based on [Noumena Digital's Template](https://github.com
 - Dimitri Fankhauser
 
 ## Task
-We were tasked to create a system to create a system for the trade of carbon credits. 
+We were tasked to create a system for the trade of carbon credits. 
 
 ![img](Sequenzdiagramm.svg)
 
