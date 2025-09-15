@@ -258,7 +258,7 @@ contract CarbonCreditVerified is ERC1155, ERC1155Supply, AccessControl, EIP712 {
         return super.supportsInterface(interfaceId);
     }
 
-    // debug
+    // debug ToDo: vor offizielem deploy entfernen!
     function debugDomainSeparator() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
@@ -293,5 +293,5 @@ contract CarbonCreditVerified is ERC1155, ERC1155Supply, AccessControl, EIP712 {
         ));
         bytes32 digest = _hashTypedDataV4(structHash);
         return ECDSA.recover(digest, signature);
-}
+    }
 }
