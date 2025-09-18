@@ -36,7 +36,7 @@ protocol[worker] SmartContract(
         notify BlockchainDeployMessage(
             BlockchainDeploy(
                 this.ownerWalletAddress,
-                "ethereum/DeviceConsumptionToken.json",
+                "ethereum/VerifierRegistry.json",
                 BlockchainType.Ethereum,
                 mapOf<Text, ArgData>(
                     //Pair("initialSupply", Uint256(1000000000000))

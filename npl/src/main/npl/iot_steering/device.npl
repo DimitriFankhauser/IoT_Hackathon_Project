@@ -23,8 +23,7 @@ protocol[WalletOwner, Operator, Validator] Device(
     
     @api
     permission[Operator]SaveDate(Value: Number) {
-
-
+    
     };
 
     @api
